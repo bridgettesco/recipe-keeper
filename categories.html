@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recipe Categories - My Recipe Keeper</title>
+<link href="https://fonts.googleapis.com/css2?family=Indie+Flower&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* copy of main app styles (kept local for this simple page) */
+body { font-family: 'Poppins', sans-serif; background-color: #fff8f0; margin:0; padding:15px; color:#333; }
+.container { max-width:700px; margin:0 auto; }
+h1 { text-align:center; font-family:'Indie Flower', cursive; font-size:2.2em; color:#d85f3c; margin-bottom:10px; }
+.category-list { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:15px; justify-content:center; }
+.category-item { background:#fff8e7; padding:12px 16px; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.06); cursor:pointer; border-top:2px dashed #f4a261; }
+.recipe-card { background-color: #fff8e7; border-radius: 12px; padding: 12px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+.back-link { margin-bottom:15px; display:inline-block; }
+.empty { text-align:center; color:#666; margin-top:20px; }
+@media(max-width:600px){ h1{font-size:1.6em;} }
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="back-link" href="recipekeeperv3.html">← Back to Recipes</a>
+  <h1>Browse by Category</h1>
+  <div id="categories" class="category-list"></div>
+  <div id="recipesByCategory"></div>
+  <p class="empty" id="noData" style="display:none;">No recipes found yet. Add some from the main page.</p>
+</div>
+
+<script>
+const recipes = JSON.parse(localStorage.getItem('recipesData')) || [];
+const categoryColors = ['#f4a261','#2a9d8f','#e9c46a','#e76f51','#264653','#8ac926'];
+const categoriesEl = document.getElementById('categories');
+const recipesEl = document.getElementById('recipesByCategory');
+const noDataEl = document.getElementById('noData');
+
+function buildCategories(){
+  if(!recipes || recipes.length===0){ noDataEl.style.display='block'; return; }
+  noDataEl.style.display='none';
+  const counts = {};
+  recipes.forEach(r=>{ const c = r.category || 'Uncategorized'; counts[c] = (counts[c]||0)+1; });
+  const cats = Object.keys(counts).sort((a,b)=>a.localeCompare(b));
+  categoriesEl.innerHTML='';
+  cats.forEach((c,i)=>{
+    const btn = document.createElement('div');
+    btn.className='category-item';
+    const colorIndex = c.charCodeAt(0)%categoryColors.length;
+    btn.style.borderLeft = `8px solid ${categoryColors[colorIndex]}`;
+    btn.textContent = `${c} (${counts[c]})`;
+    btn.onclick = ()=>renderRecipesForCategory(c);
+    categoriesEl.appendChild(btn);
+  });
+}
+
+function renderRecipesForCategory(category){
+  recipesEl.innerHTML='';
+  const filtered = recipes.filter(r => (r.category||'Uncategorized') === category);
+  if(filtered.length===0){ recipesEl.innerHTML=`<p class="empty">No recipes in "${category}"</p>`; return; }
+  filtered.forEach((r)=>{
+    const div = document.createElement('div');
+    div.className='recipe-card';
+    let html = '';
+    if(r.photo) html += `<img src="${r.photo}" style="width:100%;border-radius:8px;margin-bottom:8px;">`;
+    html += `<h3 style="margin:0 0 6px 0;font-family:'Indie Flower', cursive;color:#d85f3c">${r.title}</h3>`;
+    html += `<p style="margin:4px 0;"><strong>Ingredients:</strong><br>${r.ingredients}</p>`;
+    html += `<p style="margin:4px 0;"><strong>Instructions:</strong><br>${r.instructions}</p>`;
+    div.innerHTML = html;
+    recipesEl.appendChild(div);
+  });
+  // scroll to recipes
+  recipesEl.scrollIntoView({behavior:'smooth'});
+}
+
+buildCategories();
+</script>
+</body>
+</html>
