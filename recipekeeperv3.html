@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Recipe Keeper</title>
+<link href="https://fonts.googleapis.com/css2?family=Indie+Flower&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #fff8f0;
+    background-image: url('https://www.transparenttextures.com/patterns/papercut-light.png');
+    margin:0; padding:0; color:#333;
+}
+.container { max-width:600px; margin:0 auto; padding:15px; }
+h1 { text-align:center; font-family:'Indie Flower', cursive; font-size:2.5em; color:#d85f3c; margin-bottom:20px; }
+h3 { font-family:'Indie Flower', cursive; color:#d85f3c; }
+
+/* Recipe Cards */
+.recipe-card {
+    background-color: #fff8e7;
+    border-radius: 15px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border: 1px solid #f1e0d6;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.3s ease;
+    opacity:0;
+    transform: translateY(20px);
+    cursor:pointer;
+    position: relative;
+    border-top:2px dashed #f4a261;
+    background-image: repeating-linear-gradient(white, white 24px, rgba(255,255,255,0.7) 25px);
+    overflow:hidden;
+}
+
+.recipe-card.show {
+    opacity:1;
+    transform: translateY(0) rotate(0deg);
+}
+
+.recipe-card:hover { transform: translateY(-3px) rotate(0deg); box-shadow:0 8px 20px rgba(0,0,0,0.15); z-index:10; }
+
+.recipe-card img {
+    width:100%;
+    max-height:250px;
+    object-fit:cover;
+    border-radius:12px;
+    margin-bottom:10px;
+    border:5px solid #fffdf5;
+    box-shadow:0 4px 8px rgba(0,0,0,0.1);
+    transform: rotate(-1deg);
+}
+
+/* Sticky-note label */
+.category-label {
+    position: absolute;
+    top:10px; left:10px;
+    color:#fff; padding:4px 8px;
+    border-radius:6px;
+    font-size:0.85em;
+    font-family:'Indie Flower', cursive;
+    box-shadow:1px 2px 4px rgba(0,0,0,0.2);
+    z-index:5;
+}
+
+/* Inputs and Buttons */
+input, textarea, select, button { width:100%; padding:10px; margin-bottom:10px; border-radius:10px; border:1px solid #ccc; box-sizing:border-box; background-color:#fffdf5; font-family:'Poppins', sans-serif; }
+button { background-color:#f4a261; color:white; border:none; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.1); transition: transform 0.2s ease, box-shadow 0.2s ease; }
+button:hover { background-color:#e76f51; transform:translateY(-2px); box-shadow:0 6px 12px rgba(0,0,0,0.15); }
+
+.filter-section { display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap; }
+.filter-section input, .filter-section select { flex:1; }
+
+/* Modal */
+.modal { display:none; position:fixed; z-index:999; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5);}
+.modal-content { background-color:#fffdf5; margin:50px auto; padding:20px; border-radius:15px; max-width:500px; box-shadow:0 8px 20px rgba(0,0,0,0.3); position:relative; }
+.close { position:absolute; top:10px; right:15px; color:#333; font-size:1.5em; font-weight:bold; cursor:pointer; }
+.modal img { max-width:100%; border-radius:12px; margin-bottom:10px; }
+
+/* Modal form buttons */
+.modal-buttons { display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
+
+@media(max-width:600px){ h1{font-size:2em;} }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>My Recipe Keeper</h1>
+<div class="filter-section">
+<input id="search" placeholder="Search by title..." oninput="renderRecipes()" />
+<select id="categoryFilter" onchange="renderRecipes()"><option value="">All Categories</option></select>
+</div>
+<div id="recipeList"></div>
+<h3>Add New Recipe</h3>
+<input id="title" placeholder="Title">
+<input id="category" placeholder="Category">
+<textarea id="ingredients" placeholder="Ingredients"></textarea>
+<textarea id="instructions" placeholder="Instructions"></textarea>
+<input type="file" id="photo" accept="image/*">
+<button onclick="saveCurrentRecipe()">Save Recipe</button>
+</div>
+
+<!-- Modal -->
+<div id="recipeModal" class="modal">
+<div class="modal-content">
+<span class="close" onclick="closeModal()">&times;</span>
+<h3 id="modalHeader"></h3>
+<div id="modalContent"></div>
+<div id="modalButtons" class="modal-buttons"></div>
+</div>
+</div>
+
+<script>
+let recipes = JSON.parse(localStorage.getItem('recipesData')) || [];
+let editingIndex = null;
+const categoryColors = ['#f4a261','#2a9d8f','#e9c46a','#e76f51','#264653','#8ac926'];
+
+function updateCategoryOptions(){
+    const select = document.getElementById('categoryFilter');
+    const categories = [...new Set(recipes.map(r=>r.category).filter(c=>c))];
+    select.innerHTML='<option value="">All Categories</option>';
+    categories.forEach(c=>{
+        const option = document.createElement('option');
+        option.value=c;
+        option.textContent=c;
+        select.appendChild(option);
+    });
+}
+
+function renderRecipes(){
+    const searchTerm = document.getElementById('search').value.toLowerCase();
+    const selectedCategory = document.getElementById('categoryFilter').value;
+    const list=document.getElementById('recipeList');
+    list.innerHTML='';
+    const filtered = recipes.filter(r=>(!searchTerm||r.title.toLowerCase().includes(searchTerm))&&(!selectedCategory||r.category===selectedCategory));
+    if(filtered.length===0){list.innerHTML='<p>No recipes yet. Add one below!</p>'; return;}
+    filtered.forEach((r,index)=>{
+        const card = document.createElement('div');
+        card.className='recipe-card';
+        const rotation=Math.random()*6-3;
+        card.style.transform=`rotate(${rotation}deg) translateY(20px)`;
+        card.onclick=()=>openModal(index);
+        if(r.photo){
+            const img=document.createElement('img'); img.src=r.photo; card.appendChild(img);
+        }
+        if(r.category){
+            const label = document.createElement('div');
+            label.className='category-label';
+            const colorIndex = r.category.charCodeAt(0)%categoryColors.length;
+            label.style.backgroundColor = categoryColors[colorIndex];
+            label.textContent=r.category;
+            card.appendChild(label);
+        }
+        card.innerHTML+=`<h3>${r.title}</h3>`;
+        list.appendChild(card);
+        setTimeout(()=>{ card.classList.add('show'); }, index*50);
+    });
+}
+
+function openModal(index){
+    const modal=document.getElementById('recipeModal');
+    const contentDiv=document.getElementById('modalContent');
+    const buttonsDiv=document.getElementById('modalButtons');
+    const header=document.getElementById('modalHeader');
+    const r=recipes[index];
+    editingIndex=index;
+    contentDiv.innerHTML='';
+    buttonsDiv.innerHTML='';
+    header.textContent='Viewing Recipe';
+    let html='';
+    if(r.photo) html+=`<img src="${r.photo}">`;
+    html+=`<h2>${r.title}</h2>
+           <p><strong>Category:</strong> ${r.category}</p>
+           <p><strong>Ingredients:</strong><br>${r.ingredients}</p>
+           <p><strong>Instructions:</strong><br>${r.instructions}</p>`;
+    contentDiv.innerHTML=html;
+
+    const editBtn=document.createElement('button');
+    editBtn.textContent='Edit Recipe';
+    editBtn.onclick=()=>editRecipeInModal();
+    const deleteBtn=document.createElement('button');
+    deleteBtn.textContent='Delete Recipe';
+    deleteBtn.onclick=()=>deleteRecipe(index);
+    buttonsDiv.appendChild(editBtn);
+    buttonsDiv.appendChild(deleteBtn);
+
+    modal.style.display='block';
+}
+
+function editRecipeInModal(){
+    const modal=document.getElementById('recipeModal');
+    const contentDiv=document.getElementById('modalContent');
+    const buttonsDiv=document.getElementById('modalButtons');
+    const header=document.getElementById('modalHeader');
+    const r=recipes[editingIndex];
+    header.textContent='Editing Recipe';
+    contentDiv.innerHTML='';
+    buttonsDiv.innerHTML='';
+    contentDiv.innerHTML=`
+        <form id="editForm">
+            <input id="modalTitle" value="${r.title}" placeholder="Title">
+            <input id="modalCategory" value="${r.category}" placeholder="Category">
+            <textarea id="modalIngredients" placeholder="Ingredients">${r.ingredients}</textarea>
+            <textarea id="modalInstructions" placeholder="Instructions">${r.instructions}</textarea>
+            <input type="file" id="modalPhoto" accept="image/*">
+        </form>
+    `;
+    const saveBtn = document.createElement('button');
+    saveBtn.textContent='Save';
+    saveBtn.onclick=()=>saveEditedRecipe();
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent='Cancel';
+    cancelBtn.onclick=()=>openModal(editingIndex);
+    buttonsDiv.appendChild(saveBtn);
+    buttonsDiv.appendChild(cancelBtn);
+}
+
+function saveEditedRecipe(){
+    const title=document.getElementById('modalTitle').value.trim();
+    const category=document.getElementById('modalCategory').value.trim();
+    const ingredients=document.getElementById('modalIngredients').value.trim();
+    const instructions=document.getElementById('modalInstructions').value.trim();
+    const photoInput=document.getElementById('modalPhoto');
+    if(!title){alert('Please enter a title'); return;}
+    const oldPhoto=recipes[editingIndex].photo||'';
+    if(photoInput.files.length>0){
+        const file=photoInput.files[0];
+        const reader=new FileReader();
+        reader.onload=function(e){ resizeImage(e.target.result,800,function(resized){
+            finalizeEdit(title,category,ingredients,instructions,resized);
+        });}
+        reader.readAsDataURL(file);
+    } else {
+        finalizeEdit(title,category,ingredients,instructions,oldPhoto);
+    }
+}
+
+function finalizeEdit(title,category,ingredients,instructions,photo){
+    recipes[editingIndex]={title,category,ingredients,instructions,photo};
+    localStorage.setItem('recipesData',JSON.stringify(recipes));
+    renderRecipes();
+    openModal(editingIndex);
+}
+
+function deleteRecipe(index){
+    if(confirm('Are you sure you want to delete this recipe?')){
+        recipes.splice(index,1);
+        localStorage.setItem('recipesData',JSON.stringify(recipes));
+        closeModal();
+        renderRecipes();
+    }
+}
+
+function saveCurrentRecipe(){
+    const title=document.getElementById('title').value.trim();
+    const category=document.getElementById('category').value.trim();
+    const ingredients=document.getElementById('ingredients').value.trim();
+    const instructions=document.getElementById('instructions').value.trim();
+    const photoInput=document.getElementById('photo');
+    if(!title){alert('Please enter a title'); return;}
+    if(photoInput.files.length>0){
+        const file=photoInput.files[0];
+        const reader=new FileReader();
+        reader.onload=function(e){ resizeImage(e.target.result,800,function(resized){
+            saveRecipeObject(title,category,ingredients,instructions,resized);
+        });}
+        reader.readAsDataURL(file);
+    } else {
+        saveRecipeObject(title,category,ingredients,instructions,'');
+    }
+}
+
+function saveRecipeObject(title,category,ingredients,instructions,photo){
+    recipes.push({title,category,ingredients,instructions,photo});
+    localStorage.setItem('recipesData',JSON.stringify(recipes));
+    document.getElementById('title').value='';
+    document.getElementById('category').value='';
+    document.getElementById('ingredients').value='';
+    document.getElementById('instructions').value='';
+    document.getElementById('photo').value='';
+    updateCategoryOptions();
+    renderRecipes();
+}
+
+function closeModal(){ document.getElementById('recipeModal').style.display='none'; }
+window.onclick=function(e){ if(e.target==document.getElementById('recipeModal')) closeModal(); }
+
+function resizeImage(dataURL,maxWidth,callback){
+    const img=new Image();
+    img.onload=function(){
+        const canvas=document.createElement('canvas');
+        const scale=Math.min(maxWidth/img.width,1);
+        canvas.width=img.width*scale; canvas.height=img.height*scale;
+        const ctx=canvas.getContext('2d'); ctx.drawImage(img,0,0,canvas.width,canvas.height);
+        callback(canvas.toDataURL('image/jpeg',0.8));
+    }
+    img.src=dataURL;
+}
+
+updateCategoryOptions();
+renderRecipes();
+</script>
+</body>
+</html>
+
+
