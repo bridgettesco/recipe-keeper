@@ -151,18 +151,31 @@ function renderRecipes(){
         const rotation=Math.random()*6-3;
         card.style.transform=`rotate(${rotation}deg) translateY(20px)`;
         card.onclick=()=>openModal(index);
+
+        // Create card content as a document fragment
+        const content = document.createDocumentFragment();
+        
         if(r.photo){
-            const img=document.createElement('img'); img.src=r.photo; card.appendChild(img);
+            const img=document.createElement('img');
+            img.src=r.photo;
+            content.appendChild(img);
         }
+        
         if(r.category){
             const label = document.createElement('div');
             label.className='category-label';
             const colorIndex = r.category.charCodeAt(0)%categoryColors.length;
             label.style.backgroundColor = categoryColors[colorIndex];
+            // Show subcategory if it exists
             label.textContent = r.subcategory ? `${r.category} > ${r.subcategory}` : r.category;
-            card.appendChild(label);
+            content.appendChild(label);
         }
-        card.innerHTML+=`<h3>${r.title}</h3>`;
+
+        const title = document.createElement('h3');
+        title.textContent = r.title;
+        content.appendChild(title);
+        
+        card.appendChild(content);
         list.appendChild(card);
         setTimeout(()=>{ card.classList.add('show'); }, index*50);
     });
@@ -181,7 +194,7 @@ function openModal(index){
     let html='';
     if(r.photo) html+=`<img src="${r.photo}">`;
     html+=`<h2>${r.title}</h2>
-           <p><strong>Category:</strong> ${r.category}</p>
+           <p><strong>Category:</strong> ${r.category}${r.subcategory ? ` > ${r.subcategory}` : ''}</p>
            <p><strong>Ingredients:</strong><br>${r.ingredients}</p>
            <p><strong>Instructions:</strong><br>${r.instructions}</p>`;
     contentDiv.innerHTML=html;
@@ -271,22 +284,26 @@ function deleteRecipe(index){
 }
 
 function saveCurrentRecipe(){
-    const title=document.getElementById('title').value.trim();
-    const category=document.getElementById('category').value.trim();
-    const subcategory=document.getElementById('subcategory').value.trim();
-    const ingredients=document.getElementById('ingredients').value.trim();
-    const instructions=document.getElementById('instructions').value.trim();
-    const photoInput=document.getElementById('photo');
+    const title = document.getElementById('title').value.trim();
+    const category = document.getElementById('category').value.trim();
+    const subcategory = document.getElementById('subcategory').value.trim();
+    const ingredients = document.getElementById('ingredients').value.trim();
+    const instructions = document.getElementById('instructions').value.trim();
+    const photoInput = document.getElementById('photo');
+    
     if(!title){alert('Please enter a title'); return;}
+    
     if(photoInput.files.length>0){
-        const file=photoInput.files[0];
-        const reader=new FileReader();
-        reader.onload=function(e){ resizeImage(e.target.result,800,function(resized){
-            saveRecipeObject(title,category,subcategory,ingredients,instructions,resized);
-        });}
+        const file = photoInput.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e){
+            resizeImage(e.target.result, 800, function(resized){
+                saveRecipeObject(title, category, subcategory, ingredients, instructions, resized);
+            });
+        }
         reader.readAsDataURL(file);
     } else {
-        saveRecipeObject(title,category,subcategory,ingredients,instructions,'');
+        saveRecipeObject(title, category, subcategory, ingredients, instructions, '');
     }
 }
 
