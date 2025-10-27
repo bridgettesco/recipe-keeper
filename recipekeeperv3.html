@@ -90,26 +90,35 @@ button:hover { background-color:#e76f51; transform:translateY(-2px); box-shadow:
 <div class="filter-section">
 <input id="search" placeholder="Search by title..." oninput="renderRecipes()" />
 <select id="categoryFilter" onchange="renderRecipes()"><option value="">All Categories</option></select>
-<div style="text-align:center; margin-bottom:12px;">
-    <a href="categories.html"><button>Browse by Category</button></a>
-</div>
-</div>
-<div id="recipeList"></div>
-<h3>Add New Recipe</h3>
-<input id="title" placeholder="Title">
-<div style="display:flex;gap:10px;margin-bottom:10px">
-    <div style="flex:1">
-        <input id="category" placeholder="Main Category">
+    <div style="text-align:center; margin-bottom:12px;">
+        <a href="categories.html"><button>Browse by Category</button></a>
     </div>
-    <div style="flex:1">
-        <input id="subcategory" placeholder="Sub Category (optional)">
+    <button id="addToggle" style="margin:10px 0;" onclick="toggleAddForm()">+ Add New Recipe</button>
     </div>
-</div>
-<textarea id="ingredients" placeholder="Ingredients"></textarea>
-<textarea id="instructions" placeholder="Instructions"></textarea>
-<input type="file" id="photo" accept="image/*">
-<button onclick="saveCurrentRecipe()">Save Recipe</button>
-</div>
+
+    <!-- Add form (collapsed by default) -->
+    <div id="addForm" style="display:none;background:#fffdf5;padding:12px;border-radius:12px;margin-bottom:16px;box-shadow:0 4px 10px rgba(0,0,0,0.05)">
+    <h3 style="margin-top:0">Add New Recipe</h3>
+    <input id="title" placeholder="Title">
+    <div style="display:flex;gap:10px;margin-bottom:10px">
+        <div style="flex:1">
+            <input id="category" placeholder="Main Category">
+        </div>
+        <div style="flex:1">
+            <input id="subcategory" placeholder="Sub Category (optional)">
+        </div>
+    </div>
+    <textarea id="ingredients" placeholder="Ingredients"></textarea>
+    <textarea id="instructions" placeholder="Instructions"></textarea>
+    <input type="file" id="photo" accept="image/*">
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+        <button onclick="saveCurrentRecipe()">Save Recipe</button>
+        <button onclick="toggleAddForm()" style="background:#999">Cancel</button>
+    </div>
+    </div>
+
+    <div id="recipeList"></div>
+    </div>
 
 <!-- Modal -->
 <div id="recipeModal" class="modal">
@@ -308,7 +317,8 @@ function saveCurrentRecipe(){
 }
 
 function saveRecipeObject(title,category,subcategory,ingredients,instructions,photo){
-    recipes.push({title,category,subcategory,ingredients,instructions,photo});
+    // Add new recipes to the front so newest appear first
+    recipes.unshift({title,category,subcategory,ingredients,instructions,photo});
     localStorage.setItem('recipesData',JSON.stringify(recipes));
     document.getElementById('title').value='';
     document.getElementById('category').value='';
@@ -318,6 +328,8 @@ function saveRecipeObject(title,category,subcategory,ingredients,instructions,ph
     document.getElementById('photo').value='';
     updateCategoryOptions();
     renderRecipes();
+    // ensure the newly added recipe is visible
+    setTimeout(afterSaveScrollTop, 120);
 }
 
 function closeModal(){ document.getElementById('recipeModal').style.display='none'; }
@@ -337,6 +349,30 @@ function resizeImage(dataURL,maxWidth,callback){
 
 updateCategoryOptions();
 renderRecipes();
+</script>
+</body>
+<script>
+// Toggle the add form visibility
+function toggleAddForm(){
+    const form = document.getElementById('addForm');
+    const btn = document.getElementById('addToggle');
+    if(!form) return;
+    if(form.style.display === 'none' || form.style.display === ''){
+        form.style.display = 'block';
+        btn.textContent = '− Add New Recipe';
+        // scroll to add form
+        setTimeout(()=> form.scrollIntoView({behavior:'smooth', block:'start'}), 50);
+    } else {
+        form.style.display = 'none';
+        btn.textContent = '+ Add New Recipe';
+    }
+}
+
+// After save, open the list at the top so new recipe is visible
+function afterSaveScrollTop(){
+    const list = document.getElementById('recipeList');
+    if(list) list.scrollIntoView({behavior:'smooth', block:'start'});
+}
 </script>
 </body>
 </html>
