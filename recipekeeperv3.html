@@ -118,6 +118,8 @@ button:hover { background-color:#e76f51; transform:translateY(-2px); box-shadow:
     </div>
 
     <div id="recipeList"></div>
+        <!-- Pagination controls -->
+        <div id="pagination" style="display:flex;justify-content:center;align-items:center;gap:8px;margin:16px 0"></div>
     </div>
 
 <!-- Modal -->
@@ -133,6 +135,9 @@ button:hover { background-color:#e76f51; transform:translateY(-2px); box-shadow:
 <script>
 let recipes = JSON.parse(localStorage.getItem('recipesData')) || [];
 let editingIndex = null;
+// Pagination state
+let currentPage = 1;
+let pageSize = 6; // recipes per page
 const categoryColors = ['#f4a261','#2a9d8f','#e9c46a','#e76f51','#264653','#8ac926'];
 
 function updateCategoryOptions(){
@@ -151,43 +156,96 @@ function renderRecipes(){
     const searchTerm = document.getElementById('search').value.toLowerCase();
     const selectedCategory = document.getElementById('categoryFilter').value;
     const list=document.getElementById('recipeList');
+    const paginationEl = document.getElementById('pagination');
     list.innerHTML='';
-    const filtered = recipes.filter(r=>(!searchTerm||r.title.toLowerCase().includes(searchTerm))&&(!selectedCategory||r.category===selectedCategory));
-    if(filtered.length===0){list.innerHTML='<p>No recipes yet. Add one below!</p>'; return;}
-    filtered.forEach((r,index)=>{
+    paginationEl.innerHTML='';
+
+    // Filter recipes
+    const filtered = recipes.filter(r =>
+        (!searchTerm || (r.title||'').toLowerCase().includes(searchTerm)) &&
+        (!selectedCategory || r.category === selectedCategory)
+    );
+
+    if(filtered.length === 0){
+        list.innerHTML = '<p>No recipes yet. Add one below!</p>';
+        return;
+    }
+
+    // Pagination calculations
+    const totalItems = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    if(currentPage > totalPages) currentPage = totalPages;
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    const pageItems = filtered.slice(start, end);
+
+    // Render current page items
+    pageItems.forEach((r, i) => {
+        const globalIndex = recipes.indexOf(r);
         const card = document.createElement('div');
         card.className='recipe-card';
-        const rotation=Math.random()*6-3;
-        card.style.transform=`rotate(${rotation}deg) translateY(20px)`;
-        card.onclick=()=>openModal(index);
+        const rotation = Math.random()*6-3;
+        card.style.transform = `rotate(${rotation}deg) translateY(20px)`;
+        card.onclick = () => openModal(globalIndex);
 
-        // Create card content as a document fragment
         const content = document.createDocumentFragment();
-        
         if(r.photo){
-            const img=document.createElement('img');
-            img.src=r.photo;
-            content.appendChild(img);
+            const img = document.createElement('img'); img.src = r.photo; content.appendChild(img);
         }
-        
         if(r.category){
             const label = document.createElement('div');
             label.className='category-label';
-            const colorIndex = r.category.charCodeAt(0)%categoryColors.length;
+            const colorIndex = (r.category||'').charCodeAt(0) % categoryColors.length;
             label.style.backgroundColor = categoryColors[colorIndex];
-            // Show subcategory if it exists
             label.textContent = r.subcategory ? `${r.category} > ${r.subcategory}` : r.category;
             content.appendChild(label);
         }
-
-        const title = document.createElement('h3');
-        title.textContent = r.title;
-        content.appendChild(title);
-        
+        const title = document.createElement('h3'); title.textContent = r.title; content.appendChild(title);
         card.appendChild(content);
         list.appendChild(card);
-        setTimeout(()=>{ card.classList.add('show'); }, index*50);
+        setTimeout(()=>{ card.classList.add('show'); }, (start + i)*40);
     });
+
+    // Render pagination controls
+    renderPagination(totalPages);
+}
+
+function renderPagination(totalPages){
+    const el = document.getElementById('pagination');
+    el.innerHTML = '';
+    if(totalPages <= 1) return;
+
+    const makeBtn = (text, disabled, cb) => {
+        const b = document.createElement('button'); b.textContent = text; b.disabled = !!disabled; b.onclick = cb; return b;
+    };
+
+    // Prev
+    el.appendChild(makeBtn('Prev', currentPage === 1, ()=>{ if(currentPage>1){ currentPage--; renderRecipes(); }}));
+
+    // Page numbers (show up to 7 pages with truncation)
+    const maxButtons = 7;
+    let start = Math.max(1, currentPage - Math.floor(maxButtons/2));
+    let end = start + maxButtons - 1;
+    if(end > totalPages){ end = totalPages; start = Math.max(1, end - maxButtons + 1); }
+
+    if(start > 1){
+        const first = document.createElement('button'); first.textContent = '1'; first.onclick = ()=>{ currentPage=1; renderRecipes(); }; el.appendChild(first);
+        if(start > 2){ const dots = document.createElement('span'); dots.textContent = '...'; el.appendChild(dots); }
+    }
+
+    for(let p = start; p <= end; p++){
+        const btn = document.createElement('button'); btn.textContent = String(p);
+        if(p === currentPage) { btn.style.background = '#e76f51'; }
+        btn.onclick = ()=>{ currentPage = p; renderRecipes(); };
+        el.appendChild(btn);
+    }
+
+    if(end < totalPages){ if(end < totalPages - 1){ const dots = document.createElement('span'); dots.textContent = '...'; el.appendChild(dots); }
+        const last = document.createElement('button'); last.textContent = String(totalPages); last.onclick = ()=>{ currentPage = totalPages; renderRecipes(); }; el.appendChild(last);
+    }
+
+    // Next
+    el.appendChild(makeBtn('Next', currentPage === totalPages, ()=>{ if(currentPage<totalPages){ currentPage++; renderRecipes(); }}));
 }
 
 function openModal(index){
@@ -327,6 +385,11 @@ function saveRecipeObject(title,category,subcategory,ingredients,instructions,ph
     document.getElementById('instructions').value='';
     document.getElementById('photo').value='';
     updateCategoryOptions();
+    // show newest recipes first
+    currentPage = 1;
+    // collapse add form to reveal list
+    const form = document.getElementById('addForm'); if(form) { form.style.display = 'none'; }
+    const toggleBtn = document.getElementById('addToggle'); if(toggleBtn) toggleBtn.textContent = '+ Add New Recipe';
     renderRecipes();
     // ensure the newly added recipe is visible
     setTimeout(afterSaveScrollTop, 120);
