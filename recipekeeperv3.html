@@ -97,7 +97,10 @@ button:hover { background-color:#e76f51; transform:translateY(-2px); box-shadow:
 <div id="recipeList"></div>
 <h3>Add New Recipe</h3>
 <input id="title" placeholder="Title">
-<input id="category" placeholder="Category">
+<div style="display:flex;gap:10px">
+    <input id="category" placeholder="Main Category" style="flex:1">
+    <input id="subcategory" placeholder="Sub Category (optional)" style="flex:1">
+</div>
 <textarea id="ingredients" placeholder="Ingredients"></textarea>
 <textarea id="instructions" placeholder="Instructions"></textarea>
 <input type="file" id="photo" accept="image/*">
@@ -152,7 +155,7 @@ function renderRecipes(){
             label.className='category-label';
             const colorIndex = r.category.charCodeAt(0)%categoryColors.length;
             label.style.backgroundColor = categoryColors[colorIndex];
-            label.textContent=r.category;
+            label.textContent = r.subcategory ? `${r.category} > ${r.subcategory}` : r.category;
             card.appendChild(label);
         }
         card.innerHTML+=`<h3>${r.title}</h3>`;
@@ -258,6 +261,7 @@ function deleteRecipe(index){
 function saveCurrentRecipe(){
     const title=document.getElementById('title').value.trim();
     const category=document.getElementById('category').value.trim();
+    const subcategory=document.getElementById('subcategory').value.trim();
     const ingredients=document.getElementById('ingredients').value.trim();
     const instructions=document.getElementById('instructions').value.trim();
     const photoInput=document.getElementById('photo');
@@ -266,19 +270,20 @@ function saveCurrentRecipe(){
         const file=photoInput.files[0];
         const reader=new FileReader();
         reader.onload=function(e){ resizeImage(e.target.result,800,function(resized){
-            saveRecipeObject(title,category,ingredients,instructions,resized);
+            saveRecipeObject(title,category,subcategory,ingredients,instructions,resized);
         });}
         reader.readAsDataURL(file);
     } else {
-        saveRecipeObject(title,category,ingredients,instructions,'');
+        saveRecipeObject(title,category,subcategory,ingredients,instructions,'');
     }
 }
 
-function saveRecipeObject(title,category,ingredients,instructions,photo){
-    recipes.push({title,category,ingredients,instructions,photo});
+function saveRecipeObject(title,category,subcategory,ingredients,instructions,photo){
+    recipes.push({title,category,subcategory,ingredients,instructions,photo});
     localStorage.setItem('recipesData',JSON.stringify(recipes));
     document.getElementById('title').value='';
     document.getElementById('category').value='';
+    document.getElementById('subcategory').value='';
     document.getElementById('ingredients').value='';
     document.getElementById('instructions').value='';
     document.getElementById('photo').value='';

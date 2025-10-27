@@ -37,25 +37,63 @@ const noDataEl = document.getElementById('noData');
 function buildCategories(){
   if(!recipes || recipes.length===0){ noDataEl.style.display='block'; return; }
   noDataEl.style.display='none';
-  const counts = {};
-  recipes.forEach(r=>{ const c = r.category || 'Uncategorized'; counts[c] = (counts[c]||0)+1; });
-  const cats = Object.keys(counts).sort((a,b)=>a.localeCompare(b));
-  categoriesEl.innerHTML='';
-  cats.forEach((c,i)=>{
-    const btn = document.createElement('div');
-    btn.className='category-item';
-    const colorIndex = c.charCodeAt(0)%categoryColors.length;
-    btn.style.borderLeft = `8px solid ${categoryColors[colorIndex]}`;
-    btn.textContent = `${c} (${counts[c]})`;
-    btn.onclick = ()=>renderRecipesForCategory(c);
-    categoriesEl.appendChild(btn);
+  
+  // Group recipes by category and subcategory
+  const categories = {};
+  recipes.forEach(r => {
+    const c = r.category || 'Uncategorized';
+    const s = r.subcategory || 'General';
+    if (!categories[c]) categories[c] = {};
+    if (!categories[c][s]) categories[c][s] = [];
+    categories[c][s].push(r);
+  });
+  
+  // Build category UI
+  categoriesEl.innerHTML = '';
+  Object.keys(categories).sort().forEach((c, i) => {
+    const categoryDiv = document.createElement('div');
+    categoryDiv.style.width = '100%';
+    categoryDiv.style.marginBottom = '20px';
+    
+    const header = document.createElement('h3');
+    header.style.margin = '10px 0';
+    header.style.fontFamily = "'Indie Flower', cursive";
+    header.style.color = '#d85f3c';
+    const totalCount = Object.values(categories[c]).flat().length;
+    header.textContent = `${c} (${totalCount})`;
+    categoryDiv.appendChild(header);
+    
+    const subCats = document.createElement('div');
+    subCats.style.display = 'flex';
+    subCats.style.flexWrap = 'wrap';
+    subCats.style.gap = '8px';
+    subCats.style.paddingLeft = '20px';
+    
+    Object.keys(categories[c]).sort().forEach(s => {
+      const btn = document.createElement('div');
+      btn.className = 'category-item';
+      const colorIndex = (c+s).charCodeAt(0)%categoryColors.length;
+      btn.style.borderLeft = `8px solid ${categoryColors[colorIndex]}`;
+      btn.textContent = `${s} (${categories[c][s].length})`;
+      btn.onclick = () => renderRecipesForCategory(c, s);
+      subCats.appendChild(btn);
+    });
+    
+    categoryDiv.appendChild(subCats);
+    categoriesEl.appendChild(categoryDiv);
   });
 }
 
-function renderRecipesForCategory(category){
+function renderRecipesForCategory(category, subcategory){
   recipesEl.innerHTML='';
-  const filtered = recipes.filter(r => (r.category||'Uncategorized') === category);
-  if(filtered.length===0){ recipesEl.innerHTML=`<p class="empty">No recipes in "${category}"</p>`; return; }
+  const filtered = recipes.filter(r => 
+    (r.category||'Uncategorized') === category && 
+    (r.subcategory||'General') === subcategory
+  );
+  if(filtered.length===0){ 
+    recipesEl.innerHTML=`<p class="empty">No recipes in "${category} > ${subcategory}"</p>`; 
+    return; 
+  }
   filtered.forEach((r)=>{
     const div = document.createElement('div');
     div.className='recipe-card';
