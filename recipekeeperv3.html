@@ -97,9 +97,13 @@ button:hover { background-color:#e76f51; transform:translateY(-2px); box-shadow:
 <div id="recipeList"></div>
 <h3>Add New Recipe</h3>
 <input id="title" placeholder="Title">
-<div style="display:flex;gap:10px">
-    <input id="category" placeholder="Main Category" style="flex:1">
-    <input id="subcategory" placeholder="Sub Category (optional)" style="flex:1">
+<div style="display:flex;gap:10px;margin-bottom:10px">
+    <div style="flex:1">
+        <input id="category" placeholder="Main Category">
+    </div>
+    <div style="flex:1">
+        <input id="subcategory" placeholder="Sub Category (optional)">
+    </div>
 </div>
 <textarea id="ingredients" placeholder="Ingredients"></textarea>
 <textarea id="instructions" placeholder="Instructions"></textarea>
@@ -206,7 +210,14 @@ function editRecipeInModal(){
     contentDiv.innerHTML=`
         <form id="editForm">
             <input id="modalTitle" value="${r.title}" placeholder="Title">
-            <input id="modalCategory" value="${r.category}" placeholder="Category">
+            <div style="display:flex;gap:10px;margin-bottom:10px">
+                <div style="flex:1">
+                    <input id="modalCategory" value="${r.category||''}" placeholder="Main Category">
+                </div>
+                <div style="flex:1">
+                    <input id="modalSubcategory" value="${r.subcategory||''}" placeholder="Sub Category (optional)">
+                </div>
+            </div>
             <textarea id="modalIngredients" placeholder="Ingredients">${r.ingredients}</textarea>
             <textarea id="modalInstructions" placeholder="Instructions">${r.instructions}</textarea>
             <input type="file" id="modalPhoto" accept="image/*">
@@ -225,6 +236,7 @@ function editRecipeInModal(){
 function saveEditedRecipe(){
     const title=document.getElementById('modalTitle').value.trim();
     const category=document.getElementById('modalCategory').value.trim();
+    const subcategory=document.getElementById('modalSubcategory').value.trim();
     const ingredients=document.getElementById('modalIngredients').value.trim();
     const instructions=document.getElementById('modalInstructions').value.trim();
     const photoInput=document.getElementById('modalPhoto');
@@ -234,16 +246,16 @@ function saveEditedRecipe(){
         const file=photoInput.files[0];
         const reader=new FileReader();
         reader.onload=function(e){ resizeImage(e.target.result,800,function(resized){
-            finalizeEdit(title,category,ingredients,instructions,resized);
+            finalizeEdit(title,category,subcategory,ingredients,instructions,resized);
         });}
         reader.readAsDataURL(file);
     } else {
-        finalizeEdit(title,category,ingredients,instructions,oldPhoto);
+        finalizeEdit(title,category,subcategory,ingredients,instructions,oldPhoto);
     }
 }
 
-function finalizeEdit(title,category,ingredients,instructions,photo){
-    recipes[editingIndex]={title,category,ingredients,instructions,photo};
+function finalizeEdit(title,category,subcategory,ingredients,instructions,photo){
+    recipes[editingIndex]={title,category,subcategory,ingredients,instructions,photo};
     localStorage.setItem('recipesData',JSON.stringify(recipes));
     renderRecipes();
     openModal(editingIndex);
